@@ -14,11 +14,11 @@ const CONFIG = {
 };
 const LANGS = [["ja","日本語"],["ko","한국어"],["en","English"],["zh-TW","繁體中文"],["zh-CN","简体中文"]];
 const I18N = {
-  ja:      {tabAll:"すべて", tabWorks:"創作", tabPosts:"ポスト", empty:"まだ投稿がありません", loadError:"投稿を読み込めませんでした", otherLink:"作品ページ", next:"次の投稿へ（残り{n}件）", back:"最初の投稿に戻る", theme:"ライト／ダーク切り替え", language:"言語"},
-  ko:      {tabAll:"전체", tabWorks:"창작", tabPosts:"포스트", empty:"아직 게시물이 없습니다", loadError:"게시물을 불러오지 못했습니다", otherLink:"작품 페이지", next:"다음 게시물 (남은 {n}건)", back:"첫 게시물로", theme:"라이트/다크 전환", language:"언어"},
-  en:      {tabAll:"All", tabWorks:"Works", tabPosts:"Posts", empty:"No posts yet", loadError:"Couldn't load posts", otherLink:"Work page", next:"Next post ({n} left)", back:"Back to first post", theme:"Toggle light/dark", language:"Language"},
-  "zh-TW": {tabAll:"全部", tabWorks:"創作", tabPosts:"貼文", empty:"還沒有貼文", loadError:"無法載入貼文", otherLink:"作品頁面", next:"下一則（還有 {n} 則）", back:"回到第一則", theme:"切換淺色／深色", language:"語言"},
-  "zh-CN": {tabAll:"全部", tabWorks:"创作", tabPosts:"帖子", empty:"还没有帖子", loadError:"无法加载帖子", otherLink:"作品页面", next:"下一条（还有 {n} 条）", back:"回到第一条", theme:"切换浅色／深色", language:"语言"},
+  ja:      {tabAll:"すべて", tabWorks:"創作", tabPosts:"ポスト", empty:"まだ投稿がありません", loadError:"投稿を読み込めませんでした", otherLink:"作品ページ", play:"再生", next:"次の投稿へ（残り{n}件）", back:"最初の投稿に戻る", theme:"ライト／ダーク切り替え", language:"言語"},
+  ko:      {tabAll:"전체", tabWorks:"창작", tabPosts:"포스트", empty:"아직 게시물이 없습니다", loadError:"게시물을 불러오지 못했습니다", otherLink:"작품 페이지", play:"재생", next:"다음 게시물 (남은 {n}건)", back:"첫 게시물로", theme:"라이트/다크 전환", language:"언어"},
+  en:      {tabAll:"All", tabWorks:"Works", tabPosts:"Posts", empty:"No posts yet", loadError:"Couldn't load posts", otherLink:"Work page", play:"Play", next:"Next post ({n} left)", back:"Back to first post", theme:"Toggle light/dark", language:"Language"},
+  "zh-TW": {tabAll:"全部", tabWorks:"創作", tabPosts:"貼文", empty:"還沒有貼文", loadError:"無法載入貼文", otherLink:"作品頁面", play:"播放", next:"下一則（還有 {n} 則）", back:"回到第一則", theme:"切換淺色／深色", language:"語言"},
+  "zh-CN": {tabAll:"全部", tabWorks:"创作", tabPosts:"帖子", empty:"还没有帖子", loadError:"无法加载帖子", otherLink:"作品页面", play:"播放", next:"下一条（还有 {n} 条）", back:"回到第一条", theme:"切换浅色／深色", language:"语言"},
 };
 const TABS = [["all","tabAll",null],["works","tabWorks","work"],["posts","tabPosts","post"]];
 const LINK_COLS = [["youtube","YouTube"],["bilibili","Bilibili"],["nico","nico"],["x","X"],["pixiv","Pixiv"]];
@@ -74,10 +74,23 @@ async function load(){
 }
 function show(text){ rows = parseCsv(text).filter(r => r.date); render(); }
 
+const ytId = r => (r.youtube || "").match(/(?:[?&]v=|youtu\.be\/|\/shorts\/)([\w-]+)/)?.[1];
 function thumbOf(r){
   if (r.image) return r.image;
-  const id = (r.youtube || "").match(/(?:[?&]v=|youtu\.be\/|\/shorts\/)([\w-]+)/)?.[1];
+  const id = ytId(r);
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : "";
+}
+// 埋め込むプレイヤー。YouTube → Bilibili → ニコニコの順で最初にあるもの（中国語表示のときは Bilibili を先に）
+function videoOf(r){
+  const yt = ytId(r), bv = (r.bilibili || "").match(/\/video\/(BV\w+)/)?.[1];
+  const nico = (r.nico || "").match(/(?:\/watch\/|nico\.ms\/)((?:sm|nm|so)?\d+)/)?.[1];
+  const list = [
+    yt && {site: "YouTube", url: `https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&enablejsapi=1`, pause: true},
+    bv && {site: "Bilibili", url: `https://player.bilibili.com/player.html?bvid=${bv}&autoplay=1`},
+    nico && {site: siteName("nico"), url: `https://embed.nicovideo.jp/watch/${nico}?autoplay=1`},
+  ];
+  if (lang.startsWith("zh")) [list[0], list[1]] = [list[1], list[0]];
+  return list.find(Boolean);
 }
 function shopName(url){
   let host = "";
@@ -113,8 +126,9 @@ function postEl(r){
   const work = r.type === "work";
   const card = el("article", "post" + (work ? " work" : ""));
   card.append(el("span", "kind", t(work ? "tabWorks" : "tabPosts")), el("p", "text", r.text));
-  const src = thumbOf(r);
-  if (src){ const img = el("img", "thumb"); img.src = src; img.alt = ""; img.loading = "lazy"; card.append(img); }
+  const src = thumbOf(r), video = videoOf(r);
+  if (video) card.append(mediaEl(video, src, !!r.image));
+  else if (src){ const img = el("img", "thumb"); img.src = src; img.alt = ""; img.loading = "lazy"; card.append(img); }
   const links = linksOf(r);
   if (links.length){
     const out = el("div", "out");
@@ -123,6 +137,34 @@ function postEl(r){
   }
   return card;
 }
+// 最初はサムネイルだけ出し、押されたらその場でプレイヤーに差し替える（読み込みを軽くし、ホイールの横送りも邪魔しない）
+function mediaEl(video, src, fit){
+  const btn = el("button", "media");
+  btn.type = "button";
+  btn.setAttribute("aria-label", `${t("play")} (${video.site})`);
+  if (src){
+    const img = el("img", "thumb" + (fit ? " fit" : ""));
+    img.src = src; img.alt = ""; img.loading = "lazy"; img.onerror = () => img.remove();
+    btn.append(img);
+  }
+  btn.append(el("span", "play"), el("span", "site", video.site));
+  btn.addEventListener("click", () => {
+    const f = el("iframe", "media");
+    f.src = video.url; f.title = video.site;
+    f.allow = "autoplay; encrypted-media; fullscreen; picture-in-picture"; f.allowFullscreen = true;
+    f.onPause = video.pause
+      ? () => f.contentWindow?.postMessage(JSON.stringify({event: "command", func: "pauseVideo", args: []}), "*")
+      : () => { offscreen.unobserve(f); f.replaceWith(btn); };
+    btn.replaceWith(f);
+    offscreen.observe(f);
+  });
+  return btn;
+}
+// 再生中の動画が画面（縦・横どちらでも）から外れたら止める。YouTube は一時停止、一時停止の手段がないサイトはサムネイルに戻す
+const offscreen = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.target.isConnected) offscreen.unobserve(e.target); // タブ切り替えなどで消えたもの
+  else if (!e.isIntersecting) e.target.onPause();
+}));
 function dayEl(date, posts){
   const li = el("li", "day" + (posts.some(p => p.type === "work") ? " has-work" : ""));
   const wrap = el("div", "rowwrap"), row = el("div", "row");
