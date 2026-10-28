@@ -20,7 +20,7 @@ const I18N = {
   "zh-TW": {tabAll:"全部", tabWorks:"創作", tabPosts:"貼文", empty:"還沒有貼文", loadError:"無法載入貼文", otherLink:"作品頁面", next:"下一則（還有 {n} 則）", back:"回到第一則", theme:"切換淺色／深色", language:"語言"},
   "zh-CN": {tabAll:"全部", tabWorks:"创作", tabPosts:"帖子", empty:"还没有帖子", loadError:"无法加载帖子", otherLink:"作品页面", next:"下一条（还有 {n} 条）", back:"回到第一条", theme:"切换浅色／深色", language:"语言"},
 };
-const TABS = [["all","tabAll",null],["works","tabWorks","創作"],["posts","tabPosts","ポスト"]];
+const TABS = [["all","tabAll",null],["works","tabWorks","work"],["posts","tabPosts","post"]];
 const LINK_COLS = [["youtube","YouTube"],["bilibili","Bilibili"],["nico","nico"],["x","X"],["pixiv","Pixiv"]];
 const SHOPS = {"booth.pm":"BOOTH","dlsite.com":"DLsite","melonbooks.co.jp":"メロンブックス","toranoana.jp":"とらのあな","fanbox.cc":"FANBOX"};
 
@@ -110,7 +110,7 @@ function linkEl(text, url){
   return a;
 }
 function postEl(r){
-  const work = r.type === "創作";
+  const work = r.type === "work";
   const card = el("article", "post" + (work ? " work" : ""));
   card.append(el("span", "kind", t(work ? "tabWorks" : "tabPosts")), el("p", "text", r.text));
   const src = thumbOf(r);
@@ -124,7 +124,7 @@ function postEl(r){
   return card;
 }
 function dayEl(date, posts){
-  const li = el("li", "day" + (posts.some(p => p.type === "創作") ? " has-work" : ""));
+  const li = el("li", "day" + (posts.some(p => p.type === "work") ? " has-work" : ""));
   const wrap = el("div", "rowwrap"), row = el("div", "row");
   row.append(...posts.map(postEl));
   wrap.append(row);
@@ -132,8 +132,9 @@ function dayEl(date, posts){
     row.classList.add("multi");
     row.tabIndex = 0;
     row.setAttribute("aria-label", `${date} (${posts.length})`);
-    wrap.append(el("button", "more"));
-    wrap.lastChild.type = "button";
+    const more = el("button", "more");
+    more.type = "button";
+    wrap.append(more);
   }
   li.append(el("span", "date", date.replaceAll("-", ".")), wrap);
   return li;
@@ -194,7 +195,13 @@ function setupRow(row){
     goTo(row, next);
   }, {passive: false});
 }
-tabsEl.addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;const k=b.dataset.k;if(k==="all")history.replaceState(null,"",location.pathname+location.search);else location.hash=k;render()});
+tabsEl.addEventListener("click", e => {
+  const k = e.target.closest(".tab")?.dataset.k;
+  if (!k) return;
+  if (k === "all") history.replaceState(null, "", location.pathname + location.search);
+  else location.hash = k;
+  render();
+});
 window.addEventListener("hashchange",render);
 
 // 言語：ブラウザの言語 → 保存した選択 → URL 指定の順で優先度が上がる
@@ -224,18 +231,12 @@ langEl.addEventListener("change", () => {
   applyLang(langEl.value);
 });
 
-function currentTheme(){
-  const t = root.getAttribute("data-theme");
-  if (t === "light" || t === "dark") return t;
-  return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-function applyTheme(t){ root.setAttribute("data-theme", t); }
 const savedTheme = store.get("theme");
-applyTheme(savedTheme === "light" || savedTheme === "dark" ? savedTheme : currentTheme());
-themeEl.addEventListener("click",()=>{
-  const next = currentTheme() === "dark" ? "light" : "dark";
-  applyTheme(next);
-  store.set("theme", next);
+root.dataset.theme = savedTheme === "light" || savedTheme === "dark" ? savedTheme
+  : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+themeEl.addEventListener("click", () => {
+  root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+  store.set("theme", root.dataset.theme);
 });
 
 applyLang(pickLang());
