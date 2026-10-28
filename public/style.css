@@ -22,29 +22,22 @@ header{display:flex;flex-direction:column;gap:6px;position:relative;padding-righ
 .theme{appearance:none;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer;display:grid;place-items:center}
 .lang{height:36px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--fg);font:inherit;font-size:13px;padding:0 10px;cursor:pointer}
 .theme:hover,.lang:hover{border-color:var(--fg)}
-.theme:focus-visible,.lang:focus-visible,.tab:focus-visible,.row:focus-visible,.more:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.theme:focus-visible,.lang:focus-visible,.row:focus-visible,.more:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .theme svg{width:18px;height:18px}
 .theme .sun{display:none}
 :root[data-theme="dark"] .theme .sun{display:block}
 :root[data-theme="dark"] .theme .moon{display:none}
 h1{font-size:22px;font-weight:700;margin:0;line-height:1.3;display:flex;align-items:center;gap:10px}
 .avatar{width:40px;height:40px;border-radius:50%;flex:none}
-.links-top{display:flex;flex-wrap:wrap;gap:14px;font-size:13px}
-.links-top a{color:var(--muted);text-decoration:none}
-.links-top a:hover{color:var(--fg)}
-
-.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;gap:20px;border-bottom:1px solid var(--line)}
-.tab{appearance:none;border:0;background:none;font:inherit;color:var(--muted);padding:10px 0;cursor:pointer;position:relative}
-.tab[aria-selected="true"]{color:var(--fg);font-weight:500}
-.tab[aria-selected="true"]::after{content:"";position:absolute;inset:auto 0 -1px;height:2px;background:var(--accent)}
+.bio{margin:0;font-size:13px;color:var(--muted)}
+.links-top{display:flex;flex-wrap:wrap;gap:8px;font-size:13px}
 
 .days{list-style:none;margin:0;padding:0 0 0 26px;display:flex;flex-direction:column;gap:24px;position:relative}
 .days:not(.is-empty)::before{content:"";position:absolute;left:6px;top:10px;bottom:0;width:2px;border-radius:2px;background:var(--line)}
 .days.is-empty{padding-left:0}
 .day{display:flex;flex-direction:column;gap:8px;position:relative;min-width:0}
-.day::before{content:"";position:absolute;left:-26px;top:5px;width:14px;height:14px;border-radius:50%;background:var(--bg);border:2px solid var(--muted)}
+.day::before{content:"";position:absolute;left:-26px;top:5px;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--accent)}
 .day::after{content:"";position:absolute;left:-12px;top:11px;width:8px;height:2px;background:var(--line)}
-.day.has-work::before{border-color:var(--accent);background:var(--accent)}
 .date{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 /* 投稿1つで幅を埋める。複数ある日は横に並び、右の+Nとホイールで送る（スクロールバーは出さない） */
 /* 行の高さはカードに合わせて伸び縮みする（同じ日に複数あるときは一番高いカードに揃う）。日付どうしの間隔もこれに従う */
@@ -59,8 +52,6 @@ h1{font-size:22px;font-weight:700;margin:0;line-height:1.3;display:flex;align-it
 .more{justify-self:center;appearance:none;border:0;cursor:pointer;font-family:var(--f-mono);font-size:12px;line-height:1;min-width:34px;padding:7px 8px;border-radius:999px;background:var(--accent);color:var(--surface);transition:transform .15s ease}
 .more:hover{transform:scale(1.08)}
 .more.back{background:var(--line);color:var(--fg)}
-.kind{font-size:11px;color:var(--muted)}
-.post.work .kind{color:var(--accent)}
 .text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 /* 画像は切らずに元の縦横比のまま全体を出す */
 .thumb{flex:none;display:block;width:100%;height:auto;border-radius:6px;background:var(--line)}
@@ -74,7 +65,14 @@ button.media:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .play::before{content:"";position:absolute;left:21px;top:17px;border-style:solid;border-width:11px 0 11px 18px;border-color:transparent transparent transparent #fff}
 button.media:hover .play{background:var(--accent)}
 .media .site{position:absolute;left:10px;bottom:6px;font-size:12px;text-shadow:0 1px 3px rgba(0,0,0,.8)}
-.out{flex:none;display:flex;flex-wrap:wrap;gap:12px;font-size:13px}
-.out a{color:var(--fg);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
-.out a:hover{text-decoration-color:var(--fg)}
+.out{flex:none;display:flex;flex-wrap:wrap;gap:8px;font-size:13px}
+/* リンクはすべて Discord のメンションのような色付きの札にして、文と見分けやすくする */
+.link{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);font-weight:500;text-decoration:none;padding:1px 7px;border-radius:4px;transition:background .15s ease,color .15s ease}
+.link:hover{background:var(--accent);color:var(--surface)}
+.link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* ホバー中のリンクの URL を出す吹き出し */
+.tip{position:fixed;z-index:20;max-width:min(360px,calc(100vw - 16px));padding:4px 9px;border-radius:6px;background:var(--fg);color:var(--bg);
+  font-family:var(--f-mono);font-size:11px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;
+  box-shadow:0 6px 16px -6px var(--shadow);opacity:0;transform:translateY(-3px);transition:opacity .12s ease,transform .12s ease}
+.tip.on{opacity:1;transform:none}
 .empty{color:var(--muted);text-align:center;padding:32px 0}

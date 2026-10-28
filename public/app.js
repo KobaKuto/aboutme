@@ -14,18 +14,17 @@ const CONFIG = {
 };
 const LANGS = [["ja","日本語"],["ko","한국어"],["en","English"],["zh-TW","繁體中文"],["zh-CN","简体中文"]];
 const I18N = {
-  ja:      {tabAll:"すべて", tabWorks:"創作", tabPosts:"ポスト", empty:"まだ投稿がありません", loadError:"投稿を読み込めませんでした", otherLink:"作品ページ", play:"再生", next:"次の投稿へ（残り{n}件）", back:"最初の投稿に戻る", theme:"ライト／ダーク切り替え", language:"言語"},
-  ko:      {tabAll:"전체", tabWorks:"창작", tabPosts:"포스트", empty:"아직 게시물이 없습니다", loadError:"게시물을 불러오지 못했습니다", otherLink:"작품 페이지", play:"재생", next:"다음 게시물 (남은 {n}건)", back:"첫 게시물로", theme:"라이트/다크 전환", language:"언어"},
-  en:      {tabAll:"All", tabWorks:"Works", tabPosts:"Posts", empty:"No posts yet", loadError:"Couldn't load posts", otherLink:"Work page", play:"Play", next:"Next post ({n} left)", back:"Back to first post", theme:"Toggle light/dark", language:"Language"},
-  "zh-TW": {tabAll:"全部", tabWorks:"創作", tabPosts:"貼文", empty:"還沒有貼文", loadError:"無法載入貼文", otherLink:"作品頁面", play:"播放", next:"下一則（還有 {n} 則）", back:"回到第一則", theme:"切換淺色／深色", language:"語言"},
-  "zh-CN": {tabAll:"全部", tabWorks:"创作", tabPosts:"帖子", empty:"还没有帖子", loadError:"无法加载帖子", otherLink:"作品页面", play:"播放", next:"下一条（还有 {n} 条）", back:"回到第一条", theme:"切换浅色／深色", language:"语言"},
+  ja:      {bio:["日本人","無職","雑食"], empty:"まだ投稿がありません", loadError:"投稿を読み込めませんでした", otherLink:"作品ページ", play:"再生", next:"次の投稿へ（残り{n}件）", back:"最初の投稿に戻る", theme:"ライト／ダーク切り替え", language:"言語"},
+  ko:      {bio:["일본인","무직","잡식"], empty:"아직 게시물이 없습니다", loadError:"게시물을 불러오지 못했습니다", otherLink:"작품 페이지", play:"재생", next:"다음 게시물 (남은 {n}건)", back:"첫 게시물로", theme:"라이트/다크 전환", language:"언어"},
+  en:      {bio:["Japanese","Unemployed","A bit of everything"], empty:"No posts yet", loadError:"Couldn't load posts", otherLink:"Work page", play:"Play", next:"Next post ({n} left)", back:"Back to first post", theme:"Toggle light/dark", language:"Language"},
+  "zh-TW": {bio:["日本人","無業","雜食"], empty:"還沒有貼文", loadError:"無法載入貼文", otherLink:"作品頁面", play:"播放", next:"下一則（還有 {n} 則）", back:"回到第一則", theme:"切換淺色／深色", language:"語言"},
+  "zh-CN": {bio:["日本人","无业","杂食"], empty:"还没有帖子", loadError:"无法加载帖子", otherLink:"作品页面", play:"播放", next:"下一条（还有 {n} 条）", back:"回到第一条", theme:"切换浅色／深色", language:"语言"},
 };
-const TABS = [["all","tabAll",null],["works","tabWorks","work"],["posts","tabPosts","post"]];
 const LINK_COLS = [["youtube","YouTube"],["bilibili","Bilibili"],["nico","nico"],["x","X"],["pixiv","Pixiv"]];
 const SHOPS = {"booth.pm":"BOOTH","dlsite.com":"DLsite","melonbooks.co.jp":"メロンブックス","toranoana.jp":"とらのあな","fanbox.cc":"FANBOX"};
 
 const root = document.documentElement;
-const tabsEl = document.getElementById("tabs"), daysEl = document.getElementById("days");
+const daysEl = document.getElementById("days"), bioEl = document.getElementById("bio");
 const langEl = document.getElementById("lang"), themeEl = document.getElementById("theme"), snsEl = document.getElementById("sns");
 // localStorage はプライベートモード等で例外になるので、使えなければ保存しないだけにする
 const store = {
@@ -72,7 +71,8 @@ async function load(){
     if (!cached){ failed = true; render(); }
   }
 }
-function show(text){ rows = parseCsv(text).filter(r => r.date); render(); }
+// 表示するのは work だけ（post 行はシートに残っていても出さない）
+function show(text){ rows = parseCsv(text).filter(r => r.date && r.type === "work"); render(); }
 
 const ytId = r => (r.youtube || "").match(/(?:[?&]v=|youtu\.be\/|\/shorts\/)([\w-]+)/)?.[1];
 function thumbOf(r){
@@ -118,14 +118,31 @@ function el(tag, cls, text){
 }
 // 外部リンクは別タブで開き、ホバーで URL を出す
 function linkEl(text, url){
-  const a = el("a", null, text);
-  a.href = url; a.title = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+  const a = el("a", "link", text);
+  a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
   return a;
 }
+// ブラウザ標準の title だと出るまで遅いので、自前の吹き出しをすぐ出す。https:// は省き、長い URL は末尾を…で切る
+const tipEl = document.getElementById("tip");
+function showTip(a){
+  tipEl.textContent = a.href.replace(/^https?:\/\//, "");
+  const r = a.getBoundingClientRect(), w = tipEl.offsetWidth;
+  tipEl.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  tipEl.style.top = (r.bottom + 6) + "px";
+  tipEl.classList.add("on");
+}
+const hideTip = () => tipEl.classList.remove("on");
+["mouseover", "focusin"].forEach(ev => document.addEventListener(ev, e => {
+  const a = e.target.closest?.("a.link");
+  if (a) showTip(a);
+}));
+["mouseout", "focusout"].forEach(ev => document.addEventListener(ev, e => {
+  if (e.target.closest?.("a.link")) hideTip();
+}));
+addEventListener("scroll", hideTip, {passive: true, capture: true});
 function postEl(r){
-  const work = r.type === "work";
-  const card = el("article", "post" + (work ? " work" : ""));
-  card.append(el("span", "kind", t(work ? "tabWorks" : "tabPosts")), el("p", "text", r.text));
+  const card = el("article", "post");
+  card.append(el("p", "text", r.text));
   const src = thumbOf(r), video = videoOf(r);
   if (video) card.append(mediaEl(video, src, !!r.image));
   else if (src){ const img = el("img", "thumb"); img.src = src; img.alt = ""; img.loading = "lazy"; card.append(img); }
@@ -162,11 +179,11 @@ function mediaEl(video, src, fit){
 }
 // 再生中の動画が画面（縦・横どちらでも）から外れたら止める。YouTube は一時停止、一時停止の手段がないサイトはサムネイルに戻す
 const offscreen = new IntersectionObserver(es => es.forEach(e => {
-  if (!e.target.isConnected) offscreen.unobserve(e.target); // タブ切り替えなどで消えたもの
+  if (!e.target.isConnected) offscreen.unobserve(e.target); // 言語切り替えなどで消えたもの
   else if (!e.isIntersecting) e.target.onPause();
 }));
 function dayEl(date, posts){
-  const li = el("li", "day" + (posts.some(p => p.type === "work") ? " has-work" : ""));
+  const li = el("li", "day");
   const wrap = el("div", "rowwrap"), row = el("div", "row");
   row.append(...posts.map(postEl));
   wrap.append(row);
@@ -182,11 +199,9 @@ function dayEl(date, posts){
   return li;
 }
 function render(){
-  const tab = TABS.find(x => x[0] === location.hash.slice(1)) || TABS[0];
-  tabsEl.innerHTML = TABS.map(([k, l]) => `<button class="tab" role="tab" id="tab-${k}" data-k="${k}" aria-selected="${k === tab[0]}">${t(l)}</button>`).join("");
   if (!rows && !failed) return;
   const byDay = {};
-  (rows || []).filter(r => !tab[2] || r.type === tab[2]).forEach(r => (byDay[r.date] ||= []).unshift(r)); // 同じ日の中は行の逆順＝新しい投稿が左
+  (rows || []).forEach(r => (byDay[r.date] ||= []).unshift(r)); // 同じ日の中は行の逆順＝新しい投稿が左
   const dates = Object.keys(byDay).sort().reverse();
   daysEl.replaceChildren(...(dates.length ? dates.map(d => dayEl(d, byDay[d])) : [el("li", "empty", t(failed ? "loadError" : "empty"))]));
   daysEl.classList.toggle("is-empty", !dates.length);
@@ -237,14 +252,6 @@ function setupRow(row){
     goTo(row, next);
   }, {passive: false});
 }
-tabsEl.addEventListener("click", e => {
-  const k = e.target.closest(".tab")?.dataset.k;
-  if (!k) return;
-  if (k === "all") history.replaceState(null, "", location.pathname + location.search);
-  else location.hash = k;
-  render();
-});
-window.addEventListener("hashchange",render);
 
 // 言語：ブラウザの言語 → 保存した選択 → URL 指定の順で優先度が上がる
 function matchLang(tag){
@@ -262,6 +269,7 @@ function applyLang(l){
   langEl.value = l;
   langEl.setAttribute("aria-label", t("language"));
   themeEl.setAttribute("aria-label", t("theme"));
+  bioEl.textContent = t("bio").join(" · ");
   snsEl.replaceChildren(...CONFIG.sns.map(([n, u]) => linkEl(siteName(n), u)));
   render();
 }
